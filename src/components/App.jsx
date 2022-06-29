@@ -1,16 +1,25 @@
-export const App = () => {
+import Navigation from "./Navigation";
+import Home from 'views/Home';
+import Movies from 'views/Movies';
+
+import { Wrapper, Header } from "./App.styled";
+
+
+import { useUrlContext } from "../helpers/urlApi";
+
+
+export default function App() {
+  useUrlContext();
+
   return (
-    <div
-      style={{
-        height: '100vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        fontSize: 40,
-        color: '#010101'
-      }}
-    >
-      React homework template
-    </div>
+    <>
+      <Header>
+        <Navigation />
+      </Header>
+      <Wrapper>
+        <Home />
+        <Movies />
+      </Wrapper>
+    </>
   );
-};
+}
