@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { urlSensitive } from "helpers/urlApi";
 import { useMovieDbFetcher } from "helpers/theMovieDbApi";
 
-export const linkRenderer = (string: string):ReactNode => {
+export const linkRenderer = (string) => {
   const linkExp = /^https?:\/\/[a-z0-9_./-]*$/i
   return <>{
     string.split(/(https?:\/\/[a-z0-9_./-]*)/gi).map((part, key) =>
@@ -18,7 +18,7 @@ export const linkRenderer = (string: string):ReactNode => {
   }</>
 }
 
-export default urlSensitive("/movies/:movieId/reviews", props => {
+export default urlSensitive("reviews", props => {
   const reviews = useMovieDbFetcher("Reviews", props.urlParams.movieId);
 //  console.log(reviews);
   if (!reviews) return;

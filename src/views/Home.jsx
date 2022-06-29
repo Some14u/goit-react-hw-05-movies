@@ -1,7 +1,7 @@
 import { urlSensitive, ControllerLink } from "helpers/urlApi";
 import { useMovieDbFetcher } from "helpers/theMovieDbApi";
 
-export default urlSensitive("/", () => {
+export default urlSensitive("", () => {
   const trending = useMovieDbFetcher("TodayTrendingMovies");
 
   console.log("trending", trending);

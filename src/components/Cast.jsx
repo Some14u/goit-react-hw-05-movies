@@ -4,7 +4,7 @@ import { Portrait, Wrapper, Details } from "./Cast.styled";
 import male from "../resources/male.gif";
 import female from "../resources/female.gif";
 
-export default urlSensitive("/movies/:movieId/cast", (props) => {
+export default urlSensitive("cast", (props) => {
   const data = useMovieDbFetcher("Cast", props.urlParams.movieId);
   if (!data) return;
   return (

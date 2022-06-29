@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Form, Input, Button } from "./Search.styled";
 import { theMovieDbApi } from "helpers/theMovieDbApi";
 
-export default urlSensitive("/movies", () => {
+export default urlSensitive({ index: true }, () => {
   const urlContext = useUrlContext();
 
   const [query, setQuery] = useState("");

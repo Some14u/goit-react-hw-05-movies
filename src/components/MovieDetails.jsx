@@ -1,4 +1,4 @@
-import { ControllerLink, urlSensitive } from "helpers/urlApi";
+import { ControllerLink, urlSensitive, test } from "helpers/urlApi";
 import Cast from "./Cast";
 import Reviews from "./Reviews";
 import { theMovieDbApi as dbApi, useMovieDbFetcher } from "helpers/theMovieDbApi";
@@ -9,7 +9,7 @@ function extractYear(date) {
   return new Date((Date.parse(date)))?.getUTCFullYear() || date;
 }
 
-export default urlSensitive("/movies/:movieId/*", (props) => {
+export default urlSensitive({ slug: ":movieId", expansive: true }, (props) => {
   const movieDetails = useMovieDbFetcher("MovieDetailsById", props.urlParams.movieId);
   console.log(movieDetails);
   if (!movieDetails) return;

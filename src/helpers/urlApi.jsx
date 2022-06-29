@@ -3,13 +3,22 @@ import { useSingleton } from "./common";
 
 
 
-function buildPathRegexTemplate(path) {
+// function buildPathRegexTemplate(path) {
+//   return "^" + path
+//     .replace(/\/\*$/, ".*")
+//     .replace(/\/:([a-zA-Z0-9_]+)/g, (_, name) => `/(?<${name}>[a-zA-Z0-9_]+)`) //substitute every parameter to template
+//     .replaceAll("/", "\\/") // escape /
+//     + "\\/?$";
+// }
+
+function buildPathRegexTemplate(path, expansive) {
   return "^" + path
-    .replace(/\/\*$/, ".*")
     .replace(/\/:([a-zA-Z0-9_]+)/g, (_, name) => `/(?<${name}>[a-zA-Z0-9_]+)`) //substitute every parameter to template
     .replaceAll("/", "\\/") // escape /
-    + "\\/?$";
+    + (expansive ? ".*" : "")
+    + "$";
 }
+
 
 function extractPathByMask(currentPath, mask) {
   mask = mask
@@ -71,32 +80,32 @@ export const useUrlContext = () => useContext(urlContext);
 export function UrlProvider({ structure, children }) {
   const [url, setUrl] = useUrl();
   const documentTitle = useRef(document.title);
-  const urlPassedValidation = useRef(false);
+  const urlPassValidation = useRef(false);
 
   const toContext = {
+    structure,
     setUrl,
     url,
     urlPath: url.path,
     urlSearch: url.search,
     documentTitle: documentTitle.current,
-    urlPassedValidation,
+    urlPassValidation,
   }
 
   return (
     <urlContext.Provider value={toContext}>
-      {children}
-      <Test />
+        {children}
     </urlContext.Provider>);
 }
 
 function Test() {
   const urlContext = useUrlContext();
-  if (!urlContext.urlPassedValidation.current) {
+  if (!urlContext.urlPassValidation.current) {
 //    urlContext.setUrl({ path: "/" });
   }
 }
 
-const urlCurrentPathContext = createContext({path: "/"});
+const urlCurrentPathContext = createContext({ path: "" });
 
 export function ControllerLink(props) {
   const urlContext = useUrlContext();
@@ -135,31 +144,58 @@ export function ControllerLink(props) {
 
 function updateDocumentTitle(title, path, search) {
   if (path.startsWith("/")) path = path.substring(1);
-  if (path.endsWith("/*")) path = path.substring(0, path.length - 2);
   if (path.endsWith("/")) path = path.substring(0, path.length - 1);
   if (path !== "") title = title + " | " + path;
   document.title = title + search;
 }
 
-export function urlSensitive(path, WrappedComponent) {
+export function urlSensitive(params, WrappedComponent) {
+  // console.log("module.id", module.id);
+
+  // console.log("new class", params,<WrappedComponent />)
+  if (typeof params === "string") params = { slug: params };
+
+  params = {
+    slug: "",
+    index: false,
+    expansive: false,
+    ...params,
+  }
+
   return props => {
+
+    const outerPathContext = useContext(urlCurrentPathContext);
     const urlContext = useUrlContext();
-    const pathTemplate = useRef(buildPathRegexTemplate(path));
+
+    const path = (outerPathContext.path === "/" ? "" : outerPathContext.path) + (params.index ? "" : ("/" + params.slug));
+    console.log(">>>",params.slug, params.expansive, path, outerPathContext);
+
+    const pathTemplate = useRef(buildPathRegexTemplate(path, params.expansive));
     const urlParams = compareAndParsePath(pathTemplate.current);
-    console.log(">>>", path, WrappedComponent);
+
+
+    const component = <WrappedComponent {...props} urlParams={urlParams} />;
+    //console.log("component",params, component);
+    // console.log(pathTemplate, urlParams, urlContext.url);
     if (!urlParams) return;
     // Update document title to follow current url
     updateDocumentTitle(urlContext.documentTitle, extractPathByMask(urlContext.urlPath, path), urlContext.urlSearch);
-    if (!path.endsWith("/*")) {
-      console.log("class granted urlvalidation", path)
-      urlContext.urlPassedValidation.current = true;
-    }
+    // if (!path.endsWith("/*")) {
+    //   console.log("class granted urlvalidation", path)
+    //   urlContext.urlPassValidation.current = true;
+    // }
+    console.log(">>> shown");
     return (
-      <urlCurrentPathContext.Provider value={{path}}>
-        <WrappedComponent {...props} urlParams={urlParams} />
+      <urlCurrentPathContext.Provider value={{ path }}>
+        {component}
       </urlCurrentPathContext.Provider>
     );
   }
+}
+
+export function test(WrappedComponent) {
+  console.log("test ", WrappedComponent);
+  return <WrappedComponent/>;
 }
 
 
