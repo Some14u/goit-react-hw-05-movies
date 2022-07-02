@@ -1,24 +1,197 @@
-import React, { createContext, useContext, useRef, useEffect, useReducer, useState } from "react";
-import { useSingleton } from "./common";
+import React, { createContext, useContext, useRef, useEffect, useReducer, useMemo } from "react";
+import PageNotFound from "views/PageNotFound";
+
+import { ErrorBoundary } from "react-error-boundary";
+import MySpinner from "components/spinner.styled";
+
+import { lazy, Suspense } from "react";
+
+
+const urlContext = createContext();
+const urlCurrentPathContext = createContext({ path: "" });
+
+export const useUrlContext = () => useContext(urlContext);
+
+export function UrlProvider({ applicationStructure, children }) {
+  const [url, setUrl] = useUrl();
+  const documentTitle = useRef(document.title);
+  const structure = useRef(convertStructureToRegex());
+  const toContext = {
+    structure: structure.current,
+    setUrl,
+    url,
+    documentTitle: documentTitle.current,
+  }
+
+  function convertStructureToRegex() {
+    return applicationStructure.map(path => buildPathRegexTemplate(path, false));
+  }
+
+  function validateUrl() {
+    for (const path of structure.current) if (url.path.match(path)) return true;
+    return false;
+  }
+
+  return (
+    <urlContext.Provider value={toContext}>
+      {validateUrl()
+        ? children
+        : <PageNotFound />}
+    </urlContext.Provider>);
+}
 
 
 
-// function buildPathRegexTemplate(path) {
-//   return "^" + path
-//     .replace(/\/\*$/, ".*")
-//     .replace(/\/:([a-zA-Z0-9_]+)/g, (_, name) => `/(?<${name}>[a-zA-Z0-9_]+)`) //substitute every parameter to template
-//     .replaceAll("/", "\\/") // escape /
-//     + "\\/?$";
-// }
+export function ControllerLink(props) {
+  const urlContext = useUrlContext();
+  const currentPathContext = useContext(urlCurrentPathContext);
+
+  const search = useRef(props.search || "", [props.search]);
+  // Resolves path. Calculates one for "go back" thingie,
+  // or maps pathContext.path to urlContext.path if relative path specified
+  const path = useMemo(() => {
+    if (props.path.startsWith("/")) return props.path;
+    if (props.path === "<<<") {
+      if (window.history.state?.referer) {
+        search.current = window.history.state.referer.search ?? search.current;
+        return window.history.state.referer.path ?? props.fallback ?? "#";
+      }
+      return props.fallback ?? "#";
+    }
+    return extractPathByMask(urlContext.url.path, currentPathContext.path) + props.path;
+  }, [currentPathContext.path, props.fallback, props.path, urlContext.url.path]);
+  // Builds current className, adopting from two possible prop modificators
+  const className = useMemo(() => {
+const result = [];
+    if (props.className) result.push(props.className);
+    if (comparePaths(urlContext.url.path, path)) result.push("matchUrl");
+    if (comparePaths(urlContext.url.path, path, true)) result.push("exactMatchUrl");
+    return result.join(" ") || undefined;
+  }, [path, props.className, urlContext.url.path])
+
+  function onClick(event) {
+    event.preventDefault();
+    if (path === "#") {
+      event.stopPropagation();
+      return false;
+    }
+    if (urlContext.url.path !== path || urlContext.url.search !== search.current) {
+      urlContext.setUrl({ path, search: search.current, historyAction: props.historyAction });
+    }
+  }
+
+  if (props.hideable && path === "#") return;
+  return (
+    <a onClick={onClick} className={className} href={path + search.current}>
+      {props.children}
+    </a>
+  );
+}
+
+
+export function urlAssociated(params, WrappedComponent) {
+  if (typeof params === "string") params = { slug: params };
+  params = {
+    slug: "",
+    index: false,
+    expansive: false,
+    ...params,
+  }
+
+  const compareObjects = (A, B) => {
+    if (!A || !B) return false;
+    const keysA = Object.keys(A);
+    const keysB = Object.keys(B);
+    if (keysA.length !== keysB.length) return false;
+    return !keysA.some(key => A[key] !== B[key]);
+  };
+
+  return props => {
+    const outerPathContext = useContext(urlCurrentPathContext);
+    const urlContext = useUrlContext();
+    const path = (outerPathContext.path === "/" ? "" : outerPathContext.path) + (params.index ? "" : ("/" + params.slug));
+    const pathTemplate = useRef(buildPathRegexTemplate(path, params.expansive));
+    const urlParams = useRef(undefined);
+    const newUrlParams = parsePathByTemplate(pathTemplate.current);
+    if (!compareObjects(urlParams.current, newUrlParams)) { // Added this to prevent excessive urlParams update
+      urlParams.current = newUrlParams;
+    }
+    if (!urlParams.current) return; // <- Here we cut out all components, that doesn't comply current url
+    // Ensures that document has the most recent title relevant to current url
+    updateDocumentTitle(urlContext.documentTitle, extractPathByMask(urlContext.url.path, path), urlContext.url.search);
+    return (
+      <urlCurrentPathContext.Provider value={{ path }}>
+          <Suspense fallback={<MySpinner />}>
+            <ErrorBoundary FallbackComponent={ErrorHandler}>
+              <WrappedComponent {...props} urlParams={urlParams.current} />
+            </ErrorBoundary>
+          </Suspense>
+      </urlCurrentPathContext.Provider>
+    );
+  }
+}
+
+export function importUrlAssociated(params, path) {
+  return urlAssociated(params, lazy(() => import(/* webpackChunkName: "[request]" */`../${path}`)));
+}
+
+
+
+
+//-------------------------------- Services -----------------------------------
+
+
+
+function getUrlPath() {
+  return window.location.pathname;
+}
+
+function getUrlSearch() {
+  return window.location.search;
+}
+
+function useUrl() {
+  const [url, setUrl] = useReducer(urlReducer, { path: getUrlPath(), search: getUrlSearch() });
+
+  function urlReducer(oldUrl, { path = oldUrl.path, search = oldUrl.search, historyAction = "push" }) {
+    const newurl = window.location.protocol + "//" + window.location.host + path + search;
+    if (historyAction === "push") {
+      window.history.pushState({
+        referer: window.history.state?.current,
+        current: { path, search }
+      }, "", newurl);
+    }
+    if (historyAction === "replace") {
+      window.history.replaceState(window.history.state, "", newurl);
+    }
+    return { path, search };
+  }
+
+  useEffect(() => {
+    function handleHistoryChange () {
+      setUrl({ path: getUrlPath(), search: getUrlSearch(), historyAction: "skip" });
+    };
+    window.addEventListener('popstate', handleHistoryChange);
+    return () => window.removeEventListener("popstate", handleHistoryChange);
+  }, []);
+
+  return [url, setUrl];
+}
+
+function updateDocumentTitle(title, path, search) {
+  if (path.startsWith("/")) path = path.substring(1);
+  if (path.endsWith("/")) path = path.substring(0, path.length - 1);
+  if (path !== "") title = title + " | " + path;
+  document.title = title + search;
+}
 
 function buildPathRegexTemplate(path, expansive) {
   return "^" + path
     .replace(/\/:([a-zA-Z0-9_]+)/g, (_, name) => `/(?<${name}>[a-zA-Z0-9_]+)`) //substitute every parameter to template
     .replaceAll("/", "\\/") // escape /
     + (expansive ? ".*" : "")
-    + "$";
+    + "\\/?$";
 }
-
 
 function extractPathByMask(currentPath, mask) {
   mask = mask
@@ -28,174 +201,23 @@ function extractPathByMask(currentPath, mask) {
   return currentPath.match(mask)[0] + "/";
 }
 
-function compareAndParsePath(template, path = window.location.pathname) {
+function parsePathByTemplate(template, path = window.location.pathname) {
   const test = new RegExp(template).exec(path);
-  // console.log(path, template, test, test?.groups);
   return test && { ...test.groups || {}, search: window.location.search };
 }
 
-function comparePaths(comparable, comparing, exactMatch) {
-  if (comparing.at(-1) !== "/") comparing += "/";
-  if (comparable.at(-1) !== "/") comparable += "/";
-  if (exactMatch) return comparing === comparable;
-  return comparable.startsWith(comparing);
+function comparePaths(sample, comparant, exactMatch) {
+  if (sample.at(-1) !== "/") sample += "/";
+  if (comparant.at(-1) !== "/") comparant += "/";
+  if (exactMatch) return sample === comparant;
+  return sample.startsWith(comparant);
 }
 
-const getUrlPath = () => window.location.pathname;
-const getUrlSearch = () => window.location.search;
-
-
-function useUrl() {
-  const [url, setUrl] = useReducer(urlReducer, { path: getUrlPath(), search: getUrlSearch() });
-
-  function urlReducer(oldUrl, {path = oldUrl.path, search = oldUrl.search, historyAction = "add"}) {
-    const newurl = window.location.protocol + "//" + window.location.host + path + search;
-    if (historyAction === "add") {
-      window.history.pushState({ previous: window.history.state?.path, path: newurl }, "", newurl);
-    }
-    if (historyAction === "update") {
-      window.history.updateState(window.history.state || {}, "", newurl);
-    }
-    console.log("urlReducer", window.history);
-    return { path, search };
-  }
-
-  useEffect(() => {
-    const handleHistoryChange = event => {
-      console.log("url updated to current url")
-      setUrl({ path: getUrlPath(), search: getUrlSearch(), historyAction: "skip" });
-    };
-    window.addEventListener('popstate', handleHistoryChange);
-
-    return () => window.removeEventListener("popstate", handleHistoryChange);
-  }, []);
-
-  return [url, setUrl];
-}
-
-
-const urlContext = createContext();
-export const useUrlContext = () => useContext(urlContext);
-
-export function UrlProvider({ structure, children }) {
-  const [url, setUrl] = useUrl();
-  const documentTitle = useRef(document.title);
-  const urlPassValidation = useRef(false);
-
-  const toContext = {
-    structure,
-    setUrl,
-    url,
-    urlPath: url.path,
-    urlSearch: url.search,
-    documentTitle: documentTitle.current,
-    urlPassValidation,
-  }
-
+function ErrorHandler({error}) {
   return (
-    <urlContext.Provider value={toContext}>
-        {children}
-    </urlContext.Provider>);
+    <div role="alert">
+      <p>An error occurred:</p>
+      <pre>{error.message}</pre>
+    </div>
+  )
 }
-
-function Test() {
-  const urlContext = useUrlContext();
-  if (!urlContext.urlPassValidation.current) {
-//    urlContext.setUrl({ path: "/" });
-  }
-}
-
-const urlCurrentPathContext = createContext({ path: "" });
-
-export function ControllerLink(props) {
-  const urlContext = useUrlContext();
-  const currentPathContext = useContext(urlCurrentPathContext);
-
-  const href = useRef(props.path);
-
-  useSingleton(() => {
-    if (href.current.startsWith("/")) return;
-    href.current = extractPathByMask(urlContext.urlPath, currentPathContext.path) + href.current;
-  });
-
-  useEffect(() => {
-
-  }, [urlContext.urlPath]);
-
-  function onClick(event) {
-    event.preventDefault();
-    // console.log("going to ",href.current)
-    urlContext.setUrl({ path: href.current, search: "", actionDescription: props.actionDescription });
-  }
-
-  let className = [];
-  if (props.className) className.push(props.className);
-  if (comparePaths(urlContext.urlPath, href.current)) className.push("matchUrl");
-  if (comparePaths(urlContext.urlPath, href.current, true)) className.push("exactMatchUrl");
-  className = className.join(" ");
-
-  return (
-    <a {...props} onClick={onClick} className={className !== "" ? className : undefined} href={href.current}>
-      {props.children}
-    </a>
-  );
-}
-
-
-function updateDocumentTitle(title, path, search) {
-  if (path.startsWith("/")) path = path.substring(1);
-  if (path.endsWith("/")) path = path.substring(0, path.length - 1);
-  if (path !== "") title = title + " | " + path;
-  document.title = title + search;
-}
-
-export function urlSensitive(params, WrappedComponent) {
-  // console.log("module.id", module.id);
-
-  // console.log("new class", params,<WrappedComponent />)
-  if (typeof params === "string") params = { slug: params };
-
-  params = {
-    slug: "",
-    index: false,
-    expansive: false,
-    ...params,
-  }
-
-  return props => {
-
-    const outerPathContext = useContext(urlCurrentPathContext);
-    const urlContext = useUrlContext();
-
-    const path = (outerPathContext.path === "/" ? "" : outerPathContext.path) + (params.index ? "" : ("/" + params.slug));
-    console.log(">>>",params.slug, params.expansive, path, outerPathContext);
-
-    const pathTemplate = useRef(buildPathRegexTemplate(path, params.expansive));
-    const urlParams = compareAndParsePath(pathTemplate.current);
-
-
-    const component = <WrappedComponent {...props} urlParams={urlParams} />;
-    //console.log("component",params, component);
-    // console.log(pathTemplate, urlParams, urlContext.url);
-    if (!urlParams) return;
-    // Update document title to follow current url
-    updateDocumentTitle(urlContext.documentTitle, extractPathByMask(urlContext.urlPath, path), urlContext.urlSearch);
-    // if (!path.endsWith("/*")) {
-    //   console.log("class granted urlvalidation", path)
-    //   urlContext.urlPassValidation.current = true;
-    // }
-    console.log(">>> shown");
-    return (
-      <urlCurrentPathContext.Provider value={{ path }}>
-        {component}
-      </urlCurrentPathContext.Provider>
-    );
-  }
-}
-
-export function test(WrappedComponent) {
-  console.log("test ", WrappedComponent);
-  return <WrappedComponent/>;
-}
-
-

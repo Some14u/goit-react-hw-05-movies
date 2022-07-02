@@ -1,26 +1,24 @@
-import { ControllerLink, urlSensitive, test } from "helpers/urlApi";
-import Cast from "./Cast";
-import Reviews from "./Reviews";
-import { theMovieDbApi as dbApi, useMovieDbFetcher } from "helpers/theMovieDbApi";
-import { Wrapper, Title, Details, Poster, Link } from "./MovieDetails.styled";
+import { importUrlAssociated } from "helpers/urlApi";
+import { theMovieDbApi } from "helpers/theMovieDbApi";
+import { Wrapper, Title, Details, Poster, Link, BackLink } from "./MovieDetails.styled";
+
+import PageNotFound from "views/PageNotFound";
+const Cast = importUrlAssociated("cast", "components/Cast");
+const Reviews = importUrlAssociated("reviews", "components/Reviews");
 
 
-function extractYear(date) {
-  return new Date((Date.parse(date)))?.getUTCFullYear() || date;
-}
+export default function MovieDetails(props) {
+  const movieDetails = theMovieDbApi.lazyGet("movie/" + props.urlParams.movieId);
 
-export default urlSensitive({ slug: ":movieId", expansive: true }, (props) => {
-  const movieDetails = useMovieDbFetcher("MovieDetailsById", props.urlParams.movieId);
-  console.log(movieDetails);
-  if (!movieDetails) return;
+  if (movieDetails === null) return <PageNotFound />; // No data after responce
   return (
     <>
-      <ControllerLink path="<<<">Go back</ControllerLink>
+      <BackLink path="<<<" hideable >Go back</BackLink>
       <Wrapper>
-        <Poster src={dbApi.imgUrl + dbApi.posterPath + movieDetails.poster_path} alt={`${movieDetails.title} poster`} />
+        <Poster src={theMovieDbApi.imgUrl + theMovieDbApi.posterPath + movieDetails.poster_path} alt={`${movieDetails.title} poster`} />
         <div>
           <Details>
-            <Title>{movieDetails.title} ({extractYear(movieDetails.release_date)})</Title>
+            <Title>{movieDetails.title}{extractYear(movieDetails.release_date)}</Title>
             <p>User score: {movieDetails.vote_average * 10}%</p>
             <h3>Overview</h3>
             <p>{movieDetails.overview}</p>
@@ -30,10 +28,10 @@ export default urlSensitive({ slug: ":movieId", expansive: true }, (props) => {
           <b>Additional information</b>
           <ul>
             <li>
-              <Link path="cast">Cast</Link>
+              <Link path="cast" historyAction="replace">Cast</Link>
             </li>
             <li>
-              <Link path="reviews">Reviews</Link>
+              <Link path="reviews" historyAction="replace">Reviews</Link>
             </li>
           </ul>
           </Details>
@@ -44,4 +42,9 @@ export default urlSensitive({ slug: ":movieId", expansive: true }, (props) => {
       <Reviews />
     </>
   );
-});
+};
+
+function extractYear(date) {
+  if (!date || date === "") return "";
+  return " (" + (new Date((Date.parse(date)))?.getUTCFullYear() || date) + ")"
+}

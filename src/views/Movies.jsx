@@ -1,12 +1,13 @@
-import { urlSensitive } from "helpers/urlApi";
-import MovieDetails from "components/MovieDetails";
-import Search from "components/Search";
+import { importUrlAssociated } from "helpers/urlApi";
+const MovieDetails = importUrlAssociated({ slug: ":movieId", expansive: true }, "components/MovieDetails");
+const Search = importUrlAssociated({ index: true }, "components/Search");
 
-export default urlSensitive({ slug: "movies", expansive: true }, () => {
+
+export default function Movies() {
   return (
     <section>
       <Search />
       <MovieDetails />
     </section>
   );
-});
+};

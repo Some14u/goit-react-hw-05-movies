@@ -1,4 +1,3 @@
-import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 import App from 'components/App';
@@ -15,7 +14,7 @@ const applicationStructure = [
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   // <React.StrictMode>
-    <UrlProvider structure={applicationStructure}>
+    <UrlProvider applicationStructure={applicationStructure}>
       <App />
     </UrlProvider>
   // </React.StrictMode>

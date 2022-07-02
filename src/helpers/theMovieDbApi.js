@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 class TheMovieDbApi {
   url = "https://api.themoviedb.org/3/";
   cache = {};
@@ -56,28 +54,6 @@ class TheMovieDbApi {
     this.loadConfiguration();
   }
 
-
-  fetchData(path, parameters = {}) {
-    const params = "?" + new URLSearchParams({ ...this.parameters, ...parameters, api_key: process.env.REACT_APP_SEARCH_KEY });
-
-    const controller = new AbortController();
-    const signal = controller.signal;
-
-    const promise = new Promise(async (resolve) => {
-      const request = this.url + path + params;
-      if (this.cache[request]) {
-        resolve(this.cache[request]);
-        return;
-      }
-      const response = await window.fetch(request, { signal });
-      const data = await response.json();
-      this.cache[request] = data;
-      resolve(data);
-    });
-    promise.cancel = () => controller.abort();
-    return promise;
-  }
-
   // Searches the closest possible tag name that comform with the given width and height
   findBestTag(list, { width = 0, height = 0 }) {
     if (width + height === 0) return "original";
@@ -99,8 +75,13 @@ class TheMovieDbApi {
   }
 
   loadConfiguration() {
-    this.fetchData("configuration").then(data => this.configuration = { ...this.configuration, ...data });
-    this.buildImageUrls();
+    this.get("configuration")
+      .then(data => {
+        this.configuration = { ...this.configuration, ...data }
+      })
+      .finally(() => {
+        this.buildImageUrls();
+      });
   }
 
   buildImageUrls() {
@@ -109,38 +90,66 @@ class TheMovieDbApi {
     this.portraitPath = this.findBestTag(this.configuration.images.profile_sizes, this.DESIRED_PORTRAIT_SIZE) + "/";
   }
 
-  getTodayTrendingMovies() {
-    return this.fetchData("trending/movie/day");
+  buildRequestString(path, parameters = {}) {
+    const params = "?" + new URLSearchParams({ ...this.parameters, ...parameters, api_key: process.env.REACT_APP_SEARCH_KEY });
+    return this.url + path + params;
   }
 
-  getMovieDetailsById(id) {
-    return this.fetchData("movie/" + id);
+  createFetchPromise(request) {
+    return new Promise(async (resolve) => {
+      const response = await window.fetch(request);
+      const data = await response.json();
+      resolve(data);
+    });
   }
 
-  getReviews(id) {
-    return this.fetchData(`movie/${id}/reviews`);
+
+  get(path, parameters = {}, isLazy) {
+    const request = this.buildRequestString(path, parameters);
+    if (!this.cache[request]) {
+      const resource = this.createFetchPromise(request);
+      this.cache[request] = isLazy ? new AsyncResource(resource) : resource;
+    }
+    return isLazy ? this.cache[request].read() : this.cache[request];
   }
 
-  getCast(id) {
-    return this.fetchData(`movie/${id}/credits`);
+  lazyGet(path, parameters) {
+    return this.get(path, parameters, true);
   }
 
-  searchMoviesByName(query) {
-    return this.fetchData("search/movie", { query });
-  }
 }
-
-
-export function useMovieDbFetcher(action, param) {
-  const [data, setData] = useState(undefined);
-  useEffect(() => {
-    const getDataPromise = theMovieDbApi["get" + action](param);
-    getDataPromise.then(data => setData(() => data?.success === false ? undefined : data));
-    return () => getDataPromise.cancel();
-  }, [action, param]);
-  return data;
-}
-
 
 
 export const theMovieDbApi = new TheMovieDbApi();
+
+
+
+class AsyncResource {
+  status = "pending";
+  error = undefined;
+  data = undefined;
+  promise = null;
+
+  constructor(promise) {
+    this.promise = promise
+      .then((data) => {
+        this.status = "success";
+        this.data = data;
+      })
+      .catch((error) => {
+        this.status = "error";
+        this.error = error;
+      })
+  }
+
+  read() {
+    switch (this.status) {
+      case "pending":
+        throw this.promise;
+      case "error":
+        throw this.error;
+      default:
+        return this.data;
+    }
+  }
+}

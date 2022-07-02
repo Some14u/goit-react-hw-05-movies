@@ -1,40 +1,44 @@
 import { Fragment } from "react";
-import { urlSensitive } from "helpers/urlApi";
-import { useMovieDbFetcher } from "helpers/theMovieDbApi";
+import { theMovieDbApi } from "helpers/theMovieDbApi";
+import { Wrapper, Text, Author } from "./Reviews.styled";
 
-export const linkRenderer = (string) => {
-  const linkExp = /^https?:\/\/[a-z0-9_./-]*$/i
-  return <>{
-    string.split(/(https?:\/\/[a-z0-9_./-]*)/gi).map((part, key) =>
-      <Fragment key={key}>
-        {part.match(linkExp) ? <a
-          href={part}
-          onFocus={(e) => { e.stopPropagation() }}
-          target="_blank"
-          rel="noreferrer"
-        >{part}</a>
-        : part}
-      </Fragment>)
-  }</>
-}
+export default function Reviews(props) {
+  const data = theMovieDbApi.lazyGet(`movie/${props.urlParams.movieId}/reviews`);
 
-export default urlSensitive("reviews", props => {
-  const reviews = useMovieDbFetcher("Reviews", props.urlParams.movieId);
-//  console.log(reviews);
-  if (!reviews) return;
+  if (!data.results || data.results.length === 0) return <p>We don't have any reviews for this movie.</p>;
   return (
-    <>
-      {reviews.results?.length === 0
-        ? <p>We don't have any reviews for this movie.</p>
-        : <ul>
-          {reviews.results.map(item => (
-            <li key={item.id}>
-              <h3>Author: {item.author}</h3>
-              <p>{linkRenderer(item.content)}</p>
-            </li>
-          ))}
-        </ul>
-      }
-    </>
+    <Wrapper>
+      {data.results.map(item => (
+        <li key={item.id}>
+          <Author>{item.author}</Author>
+          <Text>{linkRenderer(item.content)}</Text>
+        </li>
+      ))}
+    </Wrapper>
   );
-});
+};
+
+// Reassembles content to allow working urls and bold text
+const linkRenderer = (content) => {
+  const linkExp = /^https?:\/\/[a-z0-9_./-]*$/i;
+  const boldExp = /^\*\*[^*]+\*\*$/i;
+  const italicExp = /^_[^_]+_$/i;
+
+  function parse(part, key) {
+    let res = part;
+    if (part.match(linkExp)) {
+      res = <a
+        href={part}
+        onFocus={(e) => { e.stopPropagation() }}
+        target="_blank"
+        rel="noreferrer"
+      >{part}</a>;
+    } else if (part.match(boldExp)) {
+      res = <b>{ part.substring(2, part.length - 2) }</b>;
+    } else if (part.match(italicExp)) {
+    res = <i>{ part.substring(1, part.length - 1) }</i>;
+  }
+  return <Fragment key={key}>{res}</Fragment>;
+  }
+  return content.split(/(https?:\/\/[a-z0-9_./-]*|\*\*[^*]+\*\*|_[^_]+_)/gi).map(parse);
+}

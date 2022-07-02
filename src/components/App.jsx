@@ -1,20 +1,16 @@
+import { importUrlAssociated } from "helpers/urlApi";
 import Navigation from "./Navigation";
-import Home from 'views/Home';
-import Movies from 'views/Movies';
+import { Wrapper, Header, TMDBLogo } from "./App.styled";
 
-import { Wrapper, Header } from "./App.styled";
-
-
-import { useUrlContext } from "../helpers/urlApi";
-
+const Home = importUrlAssociated("", "views/Home");
+const Movies = importUrlAssociated({ slug: "movies", expansive: true }, "views/Movies");
 
 export default function App() {
-  useUrlContext();
-
   return (
     <>
       <Header>
         <Navigation />
+        <TMDBLogo />
       </Header>
       <Wrapper>
         <Home />

@@ -1,35 +1,33 @@
-import { urlSensitive } from "helpers/urlApi";
-import { theMovieDbApi as dbApi, useMovieDbFetcher } from "helpers/theMovieDbApi";
-import { Portrait, Wrapper, Details } from "./Cast.styled";
+import { theMovieDbApi } from "helpers/theMovieDbApi";
+import { Portrait, Wrapper, ItemWrapper, Details, Character, Name } from "./Cast.styled";
+
 import male from "../resources/male.gif";
 import female from "../resources/female.gif";
 
-export default urlSensitive("cast", (props) => {
-  const data = useMovieDbFetcher("Cast", props.urlParams.movieId);
-  if (!data) return;
+
+export default function Cast(props) {
+  const data = theMovieDbApi.lazyGet(`movie/${props.urlParams.movieId}/credits`);
+
+  if (!data.cast || data.cast.length === 0) return <p>We don't have any information about cast for this movie.</p>;
   return (
-    <>
-      {data.cast?.length === 0
-        ? <p>We don't have any information about cast for this movie.</p>
-        : <ul>
-          {data.cast.map(item => (
-            <li key={item.cast_id || item.id}>
-              <Wrapper>
-                <Portrait
-                  src={item.profile_path
-                    ? dbApi.imgUrl + dbApi.portraitPath + item.profile_path
-                    : item.gender === 1 ? female : male
-                  }
-                  alt={`${item.name}'s portrait`} />
-                <Details>
-                  <p>{item.name}</p>
-                  <p>Character: {item.character}</p>
-                </Details>
-              </Wrapper>
-            </li>
-          ))}
-        </ul>
-      }
-    </>
+    <Wrapper>
+      {data.cast.map(item => (
+        <li key={item.cast_id || item.id}>
+          <ItemWrapper>
+            <Portrait
+              src={item.profile_path
+                ? theMovieDbApi.imgUrl + theMovieDbApi.portraitPath + item.profile_path
+                : item.gender === 1 ? female : male
+              }
+              alt={`${item.name}'s portrait`} />
+            <Details>
+              <Name>{item.name}</Name>
+              <Character>Character:</Character>
+              <div>{item.character}</div>
+            </Details>
+          </ItemWrapper>
+        </li>
+      ))}
+    </Wrapper>
   );
-});
+};
