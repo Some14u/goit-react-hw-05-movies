@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { theMovieDbApi } from "helpers/theMovieDbApi";
-import { Wrapper, Text, Author } from "./Reviews.styled";
+import { Wrapper, Text, Author, Timestamp } from "./Reviews.styled";
 
 export default function Reviews(props) {
   const data = theMovieDbApi.lazyGet(`movie/${props.urlParams.movieId}/reviews`);
@@ -12,6 +12,7 @@ export default function Reviews(props) {
         <li key={item.id}>
           <Author>{item.author}</Author>
           <Text>{linkRenderer(item.content)}</Text>
+          {(item.updated_at || item.created_at) && <Timestamp>{formatDate(item.updated_at || item.created_at)}</Timestamp>}
         </li>
       ))}
     </Wrapper>
@@ -41,4 +42,10 @@ const linkRenderer = (content) => {
   return <Fragment key={key}>{res}</Fragment>;
   }
   return content.split(/(https?:\/\/[a-z0-9_./-]*|\*\*[^*]+\*\*|_[^_]+_)/gi).map(parse);
+}
+
+function formatDate(date) {
+  date = new Date((Date.parse(date)));
+  if (!date) return;
+  return date.getUTCDate() + "." + (date.getUTCMonth() + 1) + "." + date.getUTCFullYear();
 }
