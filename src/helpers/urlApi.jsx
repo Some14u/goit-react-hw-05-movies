@@ -143,7 +143,7 @@ export function importUrlAssociated(params, path) {
 
 
 function getUrlPath() {
-  return window.location.pathname;
+  return window.location.pathname.substring((process.env.PUBLIC_URL || "").length);
 }
 
 function getUrlSearch() {
@@ -154,7 +154,8 @@ function useUrl() {
   const [url, setUrl] = useReducer(urlReducer, { path: getUrlPath(), search: getUrlSearch() });
 
   function urlReducer(oldUrl, { path = oldUrl.path, search = oldUrl.search, historyAction = "push" }) {
-    const newurl = window.location.protocol + "//" + window.location.host + path + search;
+    const newurl = window.location.protocol + "//" + window.location.host + (process.env.PUBLIC_URL || "") + path + search;
+    //process.env.PUBLIC_URL
     if (historyAction === "push") {
       window.history.pushState({
         referer: window.history.state?.current,
@@ -201,7 +202,7 @@ function extractPathByMask(currentPath, mask) {
   return currentPath.match(mask)[0] + "/";
 }
 
-function parsePathByTemplate(template, path = window.location.pathname) {
+function parsePathByTemplate(template, path = getUrlPath()) {
   const test = new RegExp(template).exec(path);
   return test && { ...test.groups || {}, search: window.location.search };
 }
