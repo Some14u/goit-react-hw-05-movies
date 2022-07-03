@@ -1,6 +1,7 @@
 import { importUrlAssociated } from "helpers/urlApi";
 import { theMovieDbApi } from "helpers/theMovieDbApi";
 import { Wrapper, Title, Details, Poster, Link, BackLink } from "./MovieDetails.styled";
+import PropTypes from "prop-types";
 
 import PageNotFound from "views/PageNotFound";
 const Cast = importUrlAssociated("cast", "components/Cast");
@@ -44,7 +45,15 @@ export default function MovieDetails(props) {
   );
 };
 
+
+MovieDetails.propTypes = {
+  urlParams: PropTypes.shape({
+    movieId: PropTypes.string.isRequired,
+  }).isRequired,
+}
+
+
 function extractYear(date) {
   if (!date || date === "") return "";
-  return " (" + (new Date((Date.parse(date)))?.getUTCFullYear() || date) + ")"
+  return " (" + ((new Date(date))?.getUTCFullYear() || date) + ")"
 }

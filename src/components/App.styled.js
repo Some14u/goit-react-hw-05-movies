@@ -31,7 +31,7 @@ const TMDBLogoUrl = "https://www.themoviedb.org/assets/2/v4/logos/v2/blue_long_2
 export const TMDBLogo = () => {
   return (
     <LogoWrapper>
-      Powered by <a href="https://www.themoviedb.org/" rel="noopener"><Logo src={TMDBLogoUrl} /></a>
+      Powered by <a href="https://www.themoviedb.org/" rel="noopener noreferrer" target="_blank"><Logo src={TMDBLogoUrl} /></a>
     </LogoWrapper>
   );
 }

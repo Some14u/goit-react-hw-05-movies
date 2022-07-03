@@ -2,9 +2,11 @@ import React, { createContext, useContext, useRef, useEffect, useReducer, useMem
 import PageNotFound from "views/PageNotFound";
 
 import { ErrorBoundary } from "react-error-boundary";
-import MySpinner from "components/spinner.styled";
+import MySpinner from "components/Spinner.styled";
 
 import { lazy, Suspense } from "react";
+
+import PropTypes from "prop-types";
 
 
 const urlContext = createContext();
@@ -40,13 +42,17 @@ export function UrlProvider({ applicationStructure, children }) {
     </urlContext.Provider>);
 }
 
+UrlProvider.propTypes = {
+  applicationStructure: PropTypes.arrayOf(PropTypes.string).isRequired,
+  children: PropTypes.node.isRequired,
+}
 
 
 export function ControllerLink(props) {
   const urlContext = useUrlContext();
   const currentPathContext = useContext(urlCurrentPathContext);
 
-  const search = useRef(props.search || "", [props.search]);
+  const search = useRef(props.search || "");
   // Resolves path. Calculates one for "go back" thingie,
   // or maps pathContext.path to urlContext.path if relative path specified
   const path = useMemo(() => {
@@ -86,6 +92,16 @@ const result = [];
       {props.children}
     </a>
   );
+}
+
+ControllerLink.propTypes = {
+  path: PropTypes.string.isRequired,
+  search: PropTypes.string,
+  fallback: PropTypes.string,
+  className: PropTypes.string,
+  historyAction: PropTypes.string,
+  hideable: PropTypes.bool,
+  children: PropTypes.node,
 }
 
 
@@ -204,7 +220,7 @@ function extractPathByMask(currentPath, mask) {
 
 function parsePathByTemplate(template, path = getUrlPath()) {
   const test = new RegExp(template).exec(path);
-  return test && { ...test.groups || {}, search: window.location.search };
+  return test && { ...test.groups || {}, search: getUrlSearch() };
 }
 
 function comparePaths(sample, comparant, exactMatch) {

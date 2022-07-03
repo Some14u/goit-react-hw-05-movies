@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { theMovieDbApi } from "helpers/theMovieDbApi";
 import { Wrapper, Text, Author, Timestamp } from "./Reviews.styled";
+import PropTypes from "prop-types";
 
 export default function Reviews(props) {
   const data = theMovieDbApi.lazyGet(`movie/${props.urlParams.movieId}/reviews`);
@@ -19,9 +20,17 @@ export default function Reviews(props) {
   );
 };
 
+
+Reviews.propTypes = {
+  urlParams: PropTypes.shape({
+    movieId: PropTypes.string.isRequired,
+  }).isRequired,
+}
+
+
 // Reassembles content to allow working urls and bold text
 const linkRenderer = (content) => {
-  const linkExp = /^https?:\/\/[a-z0-9_./-]*$/i;
+  const linkExp = /^https?:\/\/[a-z0-9_%#./-]*$/i;
   const boldExp = /^\*\*[^*]+\*\*$/i;
   const italicExp = /^_[^_]+_$/i;
 
@@ -41,11 +50,11 @@ const linkRenderer = (content) => {
   }
   return <Fragment key={key}>{res}</Fragment>;
   }
-  return content.split(/(https?:\/\/[a-z0-9_./-]*|\*\*[^*]+\*\*|_[^_]+_)/gi).map(parse);
+  return content.split(/(https?:\/\/[a-z0-9_%#./-]*|\*\*[^*]+\*\*|_[^_]+_)/gi).map(parse);
 }
 
 function formatDate(date) {
-  date = new Date((Date.parse(date)));
+  date = new Date(date);
   if (!date) return;
-  return date.getUTCDate() + "." + (date.getUTCMonth() + 1) + "." + date.getUTCFullYear();
+  return date.toLocaleString('en-us', { day: "numeric", month: "long", year: "numeric" });
 }

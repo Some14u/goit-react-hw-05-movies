@@ -1,6 +1,7 @@
 import { theMovieDbApi } from "helpers/theMovieDbApi";
 import { ControllerLink } from "helpers/urlApi";
 import { useEffect } from "react";
+import PropTypes from "prop-types";
 
 export default function SearchResults({ query, resolvedCb }) {
   const data = theMovieDbApi.lazyGet("search/movie", { query });
@@ -23,4 +24,9 @@ export default function SearchResults({ query, resolvedCb }) {
       }
     </section>
   );
+}
+
+SearchResults.propTypes = {
+  query: PropTypes.string.isRequired,
+  resolvedCb: PropTypes.func.isRequired,
 }

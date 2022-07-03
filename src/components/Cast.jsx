@@ -1,5 +1,7 @@
 import { theMovieDbApi } from "helpers/theMovieDbApi";
 import { Portrait, Wrapper, ItemWrapper, Details, Character, Name } from "./Cast.styled";
+import PropTypes from "prop-types";
+
 
 import male from "../resources/male.gif";
 import female from "../resources/female.gif";
@@ -31,3 +33,9 @@ export default function Cast(props) {
     </Wrapper>
   );
 };
+
+Cast.propTypes = {
+  urlParams: PropTypes.shape({
+    movieId: PropTypes.string.isRequired,
+  }).isRequired,
+}
