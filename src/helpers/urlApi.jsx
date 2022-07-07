@@ -73,7 +73,7 @@ export function ControllerLink(props) {
 
   // Builds current className, adopting from two possible prop modificators
   const className = useMemo(() => {
-const result = [];
+    const result = [];
     if (props.className) result.push(props.className);
     if (comparePaths(urlContext.url.path, path)) result.push("matchUrl");
     if (comparePaths(urlContext.url.path, path, true)) result.push("exactMatchUrl");
@@ -171,8 +171,12 @@ function getUrlSearch() {
   return window.location.search;
 }
 
+function buildFromActualUrl() {
+  return { path: getUrlPath(), search: getUrlSearch() };
+}
+
 function useUrl() {
-  const [url, setUrl] = useReducer(urlReducer, { path: getUrlPath(), search: getUrlSearch() });
+  const [url, setUrl] = useReducer(urlReducer, buildFromActualUrl());
 
   function urlReducer(oldUrl, { path = oldUrl.path, search = oldUrl.search, historyAction = "push" }) {
     const newurl = window.location.protocol + "//" + window.location.host + (process.env.PUBLIC_URL || "") + path + search;
@@ -190,9 +194,11 @@ function useUrl() {
   }
 
   useEffect(() => {
-    function handleHistoryChange () {
-      setUrl({ path: getUrlPath(), search: getUrlSearch(), historyAction: "skip" });
+    function handleHistoryChange() {
+      setUrl({ ...buildFromActualUrl(), historyAction: "skip" });
     };
+    setUrl({ ...buildFromActualUrl(), historyAction: "replace" });
+    window.history.replaceState({ current: buildFromActualUrl() }, "") // Setup initial state in the beginning
     window.addEventListener('popstate', handleHistoryChange);
     return () => window.removeEventListener("popstate", handleHistoryChange);
   }, []);
