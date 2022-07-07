@@ -1,0 +1,1 @@
+{"version":3,"file":"static/js/components-App.1461ae88.chunk.js","mappings":"2JACA,UAAeA,EAAf","sources":["components/App/index.js"],"sourcesContent":["import App from \"./App\";\nexport default App;"],"names":["App"],"sourceRoot":""}
