@@ -1,5 +1,5 @@
 import { importUrlAssociated } from "helpers/urlApi";
-import Navigation from "./Navigation";
+import Navigation from "../Navigation/Navigation";
 import { Wrapper, Header, TMDBLogo } from "./App.styled";
 
 const Home = importUrlAssociated("", "views/Home");

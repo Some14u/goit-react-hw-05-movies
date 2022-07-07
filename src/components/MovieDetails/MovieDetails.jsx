@@ -9,22 +9,21 @@ const Reviews = importUrlAssociated("reviews", "components/Reviews");
 
 
 export default function MovieDetails(props) {
-  const movieDetails = theMovieDbApi.lazyGet("movie/" + props.urlParams.movieId);
-
-  if (movieDetails === null) return <PageNotFound />; // No data after responce
+  const data = theMovieDbApi.lazyGet("movie/" + props.urlParams.movieId);
+  if (data === null || data.success === false) return <PageNotFound />; // No data after responce
   return (
     <>
-      <BackLink path="<<<" hideable >Go back</BackLink>
+      <BackLink path="<<<" fallback="/movies">Go back</BackLink>
       <Wrapper>
-        <Poster src={theMovieDbApi.imgUrl + theMovieDbApi.posterPath + movieDetails.poster_path} alt={`${movieDetails.title} poster`} />
+        <Poster src={theMovieDbApi.imgUrl + theMovieDbApi.posterPath + data.poster_path} alt={`${data.title} poster`} />
         <div>
           <Details>
-            <Title>{movieDetails.title}{extractYear(movieDetails.release_date)}</Title>
-            <p>User score: {movieDetails.vote_average * 10}%</p>
+            <Title>{data.title}{extractYear(data.release_date)}</Title>
+            <p>User score: {data.vote_average * 10}%</p>
             <h3>Overview</h3>
-            <p>{movieDetails.overview}</p>
+            <p>{data.overview}</p>
             <b>Genres</b>
-            <p>{movieDetails.genres.map(item => item.name).join(", ")}</p>
+            <p>{data.genres.map(item => item.name).join(", ")}</p>
             <hr />
           <b>Additional information</b>
           <ul>

@@ -3,8 +3,8 @@ import { Portrait, Wrapper, ItemWrapper, Details, Character, Name } from "./Cast
 import PropTypes from "prop-types";
 
 
-import male from "../resources/male.gif";
-import female from "../resources/female.gif";
+import male from "resources/male.gif";
+import female from "resources/female.gif";
 
 
 export default function Cast(props) {

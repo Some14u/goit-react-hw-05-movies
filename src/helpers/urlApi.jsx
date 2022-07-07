@@ -48,24 +48,29 @@ UrlProvider.propTypes = {
 }
 
 
+
 export function ControllerLink(props) {
   const urlContext = useUrlContext();
   const currentPathContext = useContext(urlCurrentPathContext);
 
   const search = useRef(props.search || "");
-  // Resolves path. Calculates one for "go back" thingie,
+
+  // Resolves path. Calculates one for a "go back" thingie,
   // or maps pathContext.path to urlContext.path if relative path specified
   const path = useMemo(() => {
-    if (props.path.startsWith("/")) return props.path;
-    if (props.path === "<<<") {
-      if (window.history.state?.referer) {
-        search.current = window.history.state.referer.search ?? search.current;
-        return window.history.state.referer.path ?? props.fallback ?? "#";
-      }
-      return props.fallback ?? "#";
+    function buildPath(path) {
+      if (!path) return;
+      if (path.startsWith("/")) return path;
+      return extractPathByMask(urlContext.url.path, currentPathContext.path) + path;
     }
-    return extractPathByMask(urlContext.url.path, currentPathContext.path) + props.path;
+    if (props.path !== "<<<") return buildPath(props.path);
+    if (window.history.state?.referer) { // "<<<" case
+      search.current = window.history.state.referer.search ?? search.current;
+      return window.history.state.referer.path ?? buildPath(props.fallback) ?? "#";
+    }
+    return buildPath(props.fallback) ?? "#";
   }, [currentPathContext.path, props.fallback, props.path, urlContext.url.path]);
+
   // Builds current className, adopting from two possible prop modificators
   const className = useMemo(() => {
 const result = [];
