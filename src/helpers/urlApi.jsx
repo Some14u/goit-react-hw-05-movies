@@ -93,7 +93,7 @@ const result = [];
 
   if (props.hideable && path === "#") return;
   return (
-    <a onClick={onClick} className={className} href={path + search.current}>
+    <a onClick={onClick} className={className} href={process.env.PUBLIC_URL + path + search.current}>
       {props.children}
     </a>
   );
